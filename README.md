@@ -6,17 +6,18 @@
 [![Join the chat at https://gitter.im/web3-php/web3.php](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg)](https://gitter.im/web3-php/web3.php)
 [![Licensed under the MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/web3p/web3.php/blob/master/LICENSE)
 
-
 A php interface for interacting with the Ethereum blockchain and ecosystem.
 
 # Install
 
 Set minimum stability to dev
+
 ```
 "minimum-stability": "dev"
 ```
 
 Then
+
 ```
 composer require web3p/web3.php dev-master
 ```
@@ -27,10 +28,10 @@ Or you can add this line in composer.json
 "web3p/web3.php": "dev-master"
 ```
 
-
 # Usage
 
 ### New instance
+
 ```php
 use Web3\Web3;
 
@@ -38,6 +39,7 @@ $web3 = new Web3('http://localhost:8545');
 ```
 
 ### Using provider
+
 ```php
 use Web3\Web3;
 use Web3\Providers\HttpProvider;
@@ -50,6 +52,7 @@ $web3 = new Web3(new HttpProvider(new HttpRequestManager('http://localhost:8545'
 ```
 
 ### You can use callback to each rpc call:
+
 ```php
 $web3->clientVersion(function ($err, $version) {
     if ($err !== null) {
@@ -63,6 +66,7 @@ $web3->clientVersion(function ($err, $version) {
 ```
 
 ### Eth
+
 ```php
 use Web3\Web3;
 
@@ -79,6 +83,7 @@ $eth = new Eth('http://localhost:8545');
 ```
 
 ### Net
+
 ```php
 use Web3\Web3;
 
@@ -97,6 +102,7 @@ $net = new Net('http://localhost:8545');
 ### Batch
 
 web3
+
 ```php
 $web3->batch(true);
 $web3->clientVersion();
@@ -130,6 +136,7 @@ $eth->provider->execute(function ($err, $data) {
 ```
 
 net
+
 ```php
 $net->batch(true);
 $net->version();
@@ -145,6 +152,7 @@ $net->provider->execute(function ($err, $data) {
 ```
 
 personal
+
 ```php
 $personal->batch(true);
 $personal->listAccounts();
@@ -188,10 +196,44 @@ $constructorData = $contract->bytecode($bytecode)->getData($params);
 $functionData = $contract->at($contractAddress)->getData($functionName, $params);
 ```
 
+# event logs
+
+```php
+// get transactionReciept with decoded logs
+$contract->at($contractAddress)->getTransactionReceipt($txhash, $callback);
+
+// get past events
+$contract->at($contractAddress)->getPastEvents($eventName, $options, $callback);
+```
+
+options can also be an empty array;
+example options
+
+```php
+[
+    'filter'=>['indexedParam'=> [20,23], 'otherIndexedParam'=> '0x123456789...']// Using an array means OR: e.g. 20 or 23
+    'fromBlock'=>0
+]
+
+// example
+$contract->getPastEvents('Transfer', [], function ($err, $events){
+    if ($err !== null) {
+        return $this->fail($err);
+    }
+    if ($events) {
+        $from = $event->returnValues->from;
+        $to = $event->returnValues->to;
+        dd($events);
+    }
+});
+```
+
 # Assign value to outside scope(from callback scope to outside scope)
-Due to callback is not like javascript callback, 
-if we need to assign value to outside scope, 
+
+Due to callback is not like javascript callback,
+if we need to assign value to outside scope,
 we need to assign reference to callback.
+
 ```php
 $newAccount = '';
 
@@ -216,11 +258,13 @@ If you are using docker as development machain, you can try [ethdock](https://gi
 ### Local php cli installed
 
 1. Clone the repo and install packages.
+
 ```
 git clone https://github.com/web3p/web3.php.git && cd web3.php && composer install
 ```
 
 2. Run test script.
+
 ```
 vendor/bin/phpunit
 ```
@@ -228,54 +272,65 @@ vendor/bin/phpunit
 ### Docker container
 
 1. Clone the repo and run docker container.
+
 ```
 git clone https://github.com/web3p/web3.php.git
 ```
 
 2. Copy web3.php to web3.php/docker/app directory and start container.
+
 ```
 cp files docker/app && docker-compose up -d php ganache
 ```
 
 3. Enter php container and install packages.
+
 ```
 docker-compose exec php ash
 ```
 
 4. Change testHost in `TestCase.php`
+
 ```
 /**
  * testHost
- * 
+ *
  * @var string
  */
 protected $testHost = 'http://ganache:8545';
 ```
 
 5. Run test script
+
 ```
 vendor/bin/phpunit
 ```
 
 ###### Install packages
+
 Enter container first
+
 ```
 docker-compose exec php ash
 ```
 
 1. gmp
+
 ```
 apk add gmp-dev
 docker-php-ext-install gmp
 ```
 
 2. bcmath
+
 ```
 docker-php-ext-install bcmath
 ```
 
 ###### Remove extension
+
 Move the extension config from `/usr/local/etc/php/conf.d/`
+
 ```
 mv /usr/local/etc/php/conf.d/extension-config-name to/directory
 ```
@@ -288,8 +343,9 @@ Todo.
 
 Thank you to all the people who already contributed to web3.php!
 <a href="https://github.com/web3p/web3.php/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=web3p/web3.php" />
+<img src="https://contrib.rocks/image?repo=web3p/web3.php" />
 </a>
 
 # License
+
 MIT

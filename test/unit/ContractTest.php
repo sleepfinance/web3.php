@@ -540,6 +540,8 @@ class ContractTest extends TestCase
             });
         });
 
+
+
         if (!isset($this->contractAddress)) {
             $this->contractAddress = '0x407d73d8a49eeb85d32cf465507dd71d507100c2';
         }
@@ -565,10 +567,35 @@ class ContractTest extends TestCase
                     echo "\nTransaction has mined:) block number: " . $transaction->blockNumber . "\n";
 
                     // validate topics
-                    $this->assertEquals($contract->ethabi->encodeEventSignature($this->contract->events['Transfer']), $topics[0]);
+                    var_dump($this->contract->events);
+                    $event = $this->contract->events[$topics[0]];
+                    $this->assertEquals('Transfer', $event['name']);
                     $this->assertEquals('0x' . IntegerFormatter::format($fromAccount), $topics[1]);
                     $this->assertEquals('0x' . IntegerFormatter::format($toAccount), $topics[2]);
                 }
+            });
+        });
+        /**
+         * Decode transaction
+         */
+        $contract->at($this->contractAddress)->send('transfer', $toAccount, 16, [
+            'from' => $fromAccount,
+            'gas' => '0x200b20'
+        ], function ($err, $result) use ($contract, $fromAccount, $toAccount) {
+            if ($err !== null) {
+                return $this->fail($err->getMessage());
+            }
+            if ($result) {
+                echo "\nTransaction has made:) id: " . $result . "\n";
+            }
+            $transactionId = $result;
+            $this->assertTrue((preg_match('/^0x[a-f0-9]{64}$/', $transactionId) === 1));
+
+            $contract->getTransactionReceipt($transactionId, function ($err, $transaction) use ($fromAccount, $toAccount, $contract) {
+                if ($err !== null) {
+                    return $this->fail($err);
+                }
+                var_dump($transaction);
             });
         });
     }
@@ -1099,7 +1126,7 @@ class ContractTest extends TestCase
                     return Utils::isHex($value) && mb_strlen($value) === 66;
                 }
             ]
-          ];
+        ];
         $contractAddress = "";
 
         if (!isset($this->accounts[0])) {
@@ -1429,7 +1456,8 @@ class ContractTest extends TestCase
                     echo "\nTransaction has mined:) block number: " . $transaction->blockNumber . "\n";
 
                     // validate topics
-                    $this->assertEquals($contract->ethabi->encodeEventSignature($contract->events['Say']), $topics[0]);
+                    $event = $contract->events[$topics[0]];
+                    $this->assertEquals($event['name'], 'Say');
                     $this->assertEquals('0x' . IntegerFormatter::format($testNumber), $topics[1], $topics[2]);
                 }
                 $contract->call('number', function ($err, $res) use ($testNumber) {
@@ -1482,7 +1510,7 @@ class ContractTest extends TestCase
                         echo 'Error when call ' . $function['name'] . '. Message: ' . $err->getMessage() . "\n";
                         return;
                     }
-                    $this->assertEquals((string) $testNumber-1, $res[0]->toString());
+                    $this->assertEquals((string) $testNumber - 1, $res[0]->toString());
                 });
             });
         });
@@ -1512,6 +1540,102 @@ class ContractTest extends TestCase
                 echo "\nEstimate gas: " . $result->toString() . "\n";
                 $this->assertTrue($result !== null);
             }
+        });
+    }
+
+
+    /**
+     * test get past events
+     * @group events
+     * @return void
+     */
+    public function testGetPastEvents()
+    {
+        $contract = $this->contract;
+
+        if (!isset($this->accounts[0])) {
+            $fromAccount = '0x407d73d8a49eeb85d32cf465507dd71d507100c1';
+        } else {
+            $fromAccount = $this->accounts[0];
+        }
+        if (!isset($this->accounts[1])) {
+            $toAccount = '0x407d73d8a49eeb85d32cf465507dd71d507100c2';
+        } else {
+            $toAccount = $this->accounts[1];
+        }
+        $contract->bytecode($this->testBytecode)->new(1000000, 'Game Token', 1, 'GT', [
+            'from' => $fromAccount,
+            'gas' => '0x200b20'
+        ], function ($err, $result) use ($contract) {
+            if ($err !== null) {
+                return $this->fail($err->getMessage());
+            }
+            if ($result) {
+                echo "\nTransaction has made:) id: " . $result . "\n";
+            }
+            $transactionId = $result;
+            $this->assertTrue((preg_match('/^0x[a-f0-9]{64}$/', $transactionId) === 1));
+
+            $contract->eth->getTransactionReceipt($transactionId, function ($err, $transaction) {
+                if ($err !== null) {
+                    return $this->fail($err);
+                }
+                if ($transaction) {
+                    $this->contractAddress = $transaction->contractAddress;
+                    echo "\nTransaction has mined:) block number: " . $transaction->blockNumber . "\n";
+                }
+            });
+        });
+
+
+        if (!isset($this->contractAddress)) {
+            $this->contractAddress = '0x407d73d8a49eeb85d32cf465507dd71d507100c2';
+        }
+        $contract->at($this->contractAddress)->send('transfer', $toAccount, 16, [
+            'from' => $fromAccount,
+            'gas' => '0x200b20'
+        ], function ($err, $result) use ($contract, $fromAccount, $toAccount) {
+            if ($err !== null) {
+                return $this->fail($err->getMessage());
+            }
+            if ($result) {
+                echo "\nTransaction has made:) id: " . $result . "\n";
+            }
+            $transactionId = $result;
+            $this->assertTrue((preg_match('/^0x[a-f0-9]{64}$/', $transactionId) === 1));
+            $contract->getTransactionReceipt($transactionId, function ($err, $transaction) use ($fromAccount, $toAccount, $contract) {
+                if ($err !== null) {
+                    return $this->fail($err);
+                }
+                if ($transaction) {
+                    $tranferLog = collect($transaction->logs)->first(fn ($log) => $log->event === 'Transfer');
+                    $topics = $tranferLog->topics;
+                    echo "\nTransaction has mined:) block number: " . $transaction->blockNumber . "\n";
+                    // validate topics
+                    $event = $this->contract->events[$topics[0]];
+                    $from = $tranferLog->returnValues->from;
+                    $to = $tranferLog->returnValues->to;
+                    $this->assertEquals('Transfer', $event['name']);
+                    $this->assertEquals($fromAccount, $from);
+                    $this->assertEquals($toAccount, $to);
+                    $this->assertEquals('0x' . IntegerFormatter::format($fromAccount), $topics[1]);
+                    $this->assertEquals('0x' . IntegerFormatter::format($toAccount), $topics[2]);
+                }
+            });
+
+            $contract->getPastEvents('Transfer', [], function ($err, $events) use ($fromAccount, $toAccount) {
+                if ($err !== null) {
+                    return $this->fail($err);
+                }
+                if ($events) {
+                    $event = $events[0];
+                    $from = $event->returnValues->from;
+                    $to = $event->returnValues->to;
+                    $this->assertEquals('Transfer', $event->event);
+                    $this->assertEquals($fromAccount, $from);
+                    $this->assertEquals($toAccount, $to);
+                }
+            });
         });
     }
 }

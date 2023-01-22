@@ -11,6 +11,7 @@
 
 namespace Web3;
 
+use Closure;
 use InvalidArgumentException;
 use Web3\Providers\Provider;
 use Web3\Providers\HttpProvider;
@@ -19,6 +20,8 @@ use Web3\RequestManagers\HttpRequestManager;
 use Web3\Utils;
 use Web3\Eth;
 use Web3\Contracts\Ethabi;
+use Web3\Contracts\Event;
+use Web3\Contracts\TxReceipt;
 use Web3\Contracts\Types\Address;
 use Web3\Contracts\Types\Boolean;
 use Web3\Contracts\Types\Bytes;
@@ -115,6 +118,15 @@ class Contract
      */
     public function __construct($provider, $abi, $defaultBlock = 'latest')
     {
+        $this->ethabi = new Ethabi([
+            'address' => new Address,
+            'bool' => new Boolean,
+            'bytes' => new Bytes,
+            'dynamicBytes' => new DynamicBytes,
+            'int' => new Integer,
+            'string' => new Str,
+            'uint' => new Uinteger,
+        ]);
         if (is_string($provider) && (filter_var($provider, FILTER_VALIDATE_URL) !== false)) {
             // check the uri schema
             if (preg_match('/^https?:\/\//', $provider) === 1) {
@@ -143,7 +155,8 @@ class Contract
                 } elseif ($item['type'] === 'constructor') {
                     $this->constructor = $item;
                 } elseif ($item['type'] === 'event') {
-                    $this->events[$item['name']] = $item;
+                    $signatured = $this->ethabi->encodeEventSignature($item);
+                    $this->events[$signatured] = $item;
                 }
             }
         }
@@ -154,15 +167,7 @@ class Contract
         }
         $this->abi = $abiArray;
         $this->eth = new Eth($this->provider);
-        $this->ethabi = new Ethabi([
-            'address' => new Address,
-            'bool' => new Boolean,
-            'bytes' => new Bytes,
-            'dynamicBytes' => new DynamicBytes,
-            'int' => new Integer,
-            'string' => new Str,
-            'uint' => new Uinteger,
-        ]);
+      
     }
 
     /**
@@ -327,7 +332,7 @@ class Contract
     /**
      * getEthabi
      * 
-     * @return array
+     * @return \Web3\Contracts\Ethabi
      */
     public function getEthabi()
     {
@@ -427,7 +432,8 @@ class Contract
                 } elseif ($item['type'] === 'constructor') {
                     $this->constructor = $item;
                 } elseif ($item['type'] === 'event') {
-                    $this->events[$item['name']] = $item;
+                    $signatured = $this->ethabi->encodeEventSignature($item);
+                    $this->events[$signatured] = $item;
                 }
             }
         }
@@ -857,4 +863,33 @@ class Contract
             return $functionData;
         }
     }
+
+    /**
+     * will decode the logs
+     */
+
+    public function getPastEvents(string $eventName, array $options, callable $callback){
+        $event = new Event($this, $eventName , $options);
+        $event->getPastLogs($callback);
+    }
+
+    /**
+     * will decode the logs
+     */
+    /**
+     * set the event data;
+     *
+     * @param  callable $callback
+     * @return void
+     */
+    public function getTransactionReceipt(string $hash, callable $callback)
+    {
+        $this->eth->getTransactionReceipt($hash, function ($error, $result) use ($callback) {
+            if ($error) return call_user_func($callback, $error, null);
+            $response = $result ? (new TxReceipt($result, $this->events, $this->ethabi))->decode() : $result;
+            call_user_func($callback, null, $response);
+        });
+    }
+
+
 }
