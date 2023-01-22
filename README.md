@@ -204,12 +204,10 @@ $contract->at($contractAddress)->getTransactionReceipt($txhash, $callback);
 
 // get past events
 $contract->at($contractAddress)->getPastEvents($eventName, $options, $callback);
-```
 
-options can also be an empty array;
-example options
+//options can also be an empty array;
+//example options
 
-```php
 [
     'filter'=>['indexedParam'=> [20,23], 'otherIndexedParam'=> '0x123456789...']// Using an array means OR: e.g. 20 or 23
     'fromBlock'=>0
