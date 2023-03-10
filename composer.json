@@ -16,8 +16,8 @@
         "phpseclib/phpseclib": "~2.0.30",
         "ext-mbstring": "*",
         "krowinski/bcmath-extended": "^6.0",
-        "illuminate/collections": "^9.48",
-        "illuminate/support": "^9.48"
+        "illuminate/collections": "^9.48|^10.0",
+        "illuminate/support": "^9.48|^10.0"
     },
     "require-dev": {
         "phpunit/phpunit": "~8.0|~9.0"
